@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 set -ex
 
+# Activates the conda environment created in the Dockerfile
+source /opt/conda/etc/profile.d/conda.sh
+conda activate dispatcher
+
 # This is the master script for the capsule. When you click "Reproducible Run", the code in this file will execute.
 python -u run_capsule.py "$@"
