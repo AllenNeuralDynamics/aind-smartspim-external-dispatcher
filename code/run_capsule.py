@@ -200,6 +200,7 @@ def clean_up(
     processing_manifest: dict,
     data_folder: PathLike,
     results_folder: PathLike,
+    cloud_mode: bool
 ):
     """
     Moves all the data to the aind-open-data bucket in
@@ -217,8 +218,9 @@ def clean_up(
     results_folder: str
         Path pointing to the results folder
 
-    bucket: str
-        Bucket name
+    cloud_mode: bool
+        True if you're moving the data to the cloud,
+        False otherwise.
 
     """
     logger.info(f"Data folder: {os.listdir(data_folder)}")
@@ -273,36 +275,42 @@ def clean_up(
     logger.info(f"Compiled processing.json in path {output_filename}")
 
     # Moving data out
-    # Defining s3 outputs
-    s3_path = processing_manifest["pipeline_processing"]["stitching"]["s3_path"]
-    cell_s3_output = f"{s3_path}/image_cell_segmentation"
-    quantification_s3_output = f"{s3_path}/image_cell_quantification"
 
-    regex_channels = r"Ex_(\d{3})_Em_(\d{3})$"
+    if cloud_mode:
+        # Defining s3 outputs
+        s3_path = processing_manifest["pipeline_processing"]["stitching"]["s3_path"]
+        cell_s3_output = f"{s3_path}/image_cell_segmentation"
+        quantification_s3_output = f"{s3_path}/image_cell_quantification"
 
-    # Copying final processing manifest
-    for out in utils.execute_command_helper(
-        f"aws s3 mv {results_folder}/processing.json {s3_path}/processing.json"
-    ):
-        print(out)
+        regex_channels = r"Ex_(\d{3})_Em_(\d{3})$"
 
-    # Moving data to the cell folder
-    for cell_folder in cell_folders:
-        channel_name = re.search(regex_channels, cell_folder).group()
-
+        # Copying final processing manifest
         for out in utils.execute_command_helper(
-            f"aws s3 mv --recursive {cell_folder} {cell_s3_output}/{channel_name}"
+            f"aws s3 mv {results_folder}/processing.json {s3_path}/processing.json"
         ):
             print(out)
 
-    # Moving data to the quantification folder
-    for quantification_folder in quantification_folders:
-        channel_name = re.search(regex_channels, quantification_folder).group()
+        # Moving data to the cell folder
+        for cell_folder in cell_folders:
+            channel_name = re.search(regex_channels, cell_folder).group()
 
-        for out in utils.execute_command_helper(
-            f"aws s3 mv --recursive {quantification_folder} {quantification_s3_output}/{channel_name}"
-        ):
-            print(out)
+            for out in utils.execute_command_helper(
+                f"aws s3 mv --recursive {cell_folder} {cell_s3_output}/{channel_name}"
+            ):
+                print(out)
+
+        # Moving data to the quantification folder
+        for quantification_folder in quantification_folders:
+            channel_name = re.search(regex_channels, quantification_folder).group()
+
+            for out in utils.execute_command_helper(
+                f"aws s3 mv --recursive {quantification_folder} {quantification_s3_output}/{channel_name}"
+            ):
+                print(out)
+    
+    else:
+        # Move the data locally
+        pass
 
     utils.save_string_to_txt(
         f"Results of cell segmentation saved in: {cell_s3_output}",
@@ -381,9 +389,10 @@ def copy_intermediate_data(
     fuse_folders: List[PathLike],
     ccf_folders: List[PathLike],
     new_dataset_name: str,
-    bucket_path: str,
+    output_path: str,
     results_folder: PathLike,
     logger: logging.Logger,
+    cloud_mode: bool,
 ) -> str:
     """
     Copies the destripe, stitch and fusion metadata
@@ -420,16 +429,21 @@ def copy_intermediate_data(
         be copied following the aind conventions
         e.g., s3://{bucket_path}/{new_dataset_name}
 
-    bucket_path: str
-        S3 path where the data will be moved.
+    output_path: str
+        Path where the data will be moved.
         Do not include 's3://' since this is
-        automatically added.
+        automatically added if it's a S3 path
 
     results_folder: PathLike
         Results folder path in Code Ocean
 
     logger: logging.Logger
         Logging object
+
+    cloud_mode: bool
+        If the pipeline wants to output data
+        in the cloud or locally. True for cloud,
+        False for local.
 
     Returns
     -------
@@ -493,86 +507,91 @@ def copy_intermediate_data(
 
     logger.info(f"Compiled processing.json in path {output_filename}")
 
-    s3_path = f"s3://{bucket_path}/{new_dataset_name}"
+    if cloud_mode:
+        s3_path = f"s3://{output_path}/{new_dataset_name}"
 
-    # Copying derived metadata
-    output_dispatch_metadata = Path(output_dispatch_metadata)
-    for out in utils.execute_command_helper(
-        f"aws s3 cp --recursive {output_dispatch_metadata} {s3_path}"
-    ):
-        logger.info(out)
+        # Copying derived metadata
+        output_dispatch_metadata = Path(output_dispatch_metadata)
+        for out in utils.execute_command_helper(
+            f"aws s3 cp --recursive {output_dispatch_metadata} {s3_path}"
+        ):
+            logger.info(out)
 
-    # Copying out fused data
-    output_fusion = "image_tile_fusing"
-    dest_zarr_path = f"{s3_path}/{output_fusion}/OMEZarr"
-    dest_metadata_path = f"{s3_path}/{output_fusion}/metadata"
+        # Copying out fused data
+        output_fusion = "image_tile_fusing"
+        dest_zarr_path = f"{s3_path}/{output_fusion}/OMEZarr"
+        dest_metadata_path = f"{s3_path}/{output_fusion}/metadata"
 
-    for flatfield_channel in flatfield_channels:
-        flatfield_channel_name = Path(flatfield_channel).name
-        logger.info(
-            f"Copying data from {flatfield_channel} to"
-            f"{dest_metadata_path}/flatfield_correction/{flatfield_channel_name}"
+        for flatfield_channel in flatfield_channels:
+            flatfield_channel_name = Path(flatfield_channel).name
+            logger.info(
+                f"Copying data from {flatfield_channel} to"
+                f"{dest_metadata_path}/flatfield_correction/{flatfield_channel_name}"
+            )
+            for out in utils.execute_command_helper(
+                f"aws s3 cp --recursive {flatfield_channel} {dest_metadata_path}/flatfield_correction/{flatfield_channel_name}"
+            ):
+                logger.info(out)
+
+        for fuse_folder in fuse_folders:
+            logger.info(f"Copying data from {fuse_folder} to {s3_path}/{output_fusion}")
+            fuse_folder = Path(fuse_folder)
+            source_zarr = fuse_folder.joinpath("OMEZarr")
+            source_metadata = fuse_folder.joinpath("metadata")
+
+            if source_zarr.exists():
+                for out in utils.execute_command_helper(
+                    f"aws s3 cp --recursive {source_zarr} {dest_zarr_path}"
+                ):
+                    logger.info(out)
+
+            else:
+                raise ValueError(f"Folder {source_zarr} does not exist!")
+
+            if source_metadata.exists():
+                for out in utils.execute_command_helper(
+                    f"aws s3 cp --recursive {source_metadata} {dest_metadata_path}/{fuse_folder.name}"
+                ):
+                    logger.info(out)
+
+            else:
+                raise ValueError(f"Folder {source_metadata} does not exist!")
+
+        # Copying stitch metadata
+        for stitch_folder in stitch_folders:
+            logger.info(f"Copying data from {stitch_folder} to {dest_metadata_path}")
+            stitch_folder = Path(stitch_folder)
+            source_metadata = stitch_folder.joinpath("metadata")
+
+            if source_metadata.exists():
+                for out in utils.execute_command_helper(
+                    f"aws s3 cp --recursive {source_metadata} {dest_metadata_path}/{stitch_folder.name}"
+                ):
+                    logger.info(out)
+
+            else:
+                raise ValueError(f"Folder {source_metadata} does not exist!")
+
+        # Copying ccf data
+        ccf_s3_output = f"{s3_path}/image_atlas_alignment"
+        regex_channels = r"Ex_(\d{3})_Em_(\d{3})$"
+
+        for ccf_folder in ccf_folders:
+            channel_name = re.search(regex_channels, ccf_folder).group()
+
+            for out in utils.execute_command_helper(
+                f"aws s3 mv --recursive {ccf_folder} {ccf_s3_output}/{channel_name}"
+            ):
+                logger.info(out)
+
+        utils.save_string_to_txt(
+            f"Stitched dataset saved in: {s3_path}",
+            f"{results_folder}/output_stitching.txt",
         )
-        for out in utils.execute_command_helper(
-            f"aws s3 cp --recursive {flatfield_channel} {dest_metadata_path}/flatfield_correction/{flatfield_channel_name}"
-        ):
-            logger.info(out)
-
-    for fuse_folder in fuse_folders:
-        logger.info(f"Copying data from {fuse_folder} to {s3_path}/{output_fusion}")
-        fuse_folder = Path(fuse_folder)
-        source_zarr = fuse_folder.joinpath("OMEZarr")
-        source_metadata = fuse_folder.joinpath("metadata")
-
-        if source_zarr.exists():
-            for out in utils.execute_command_helper(
-                f"aws s3 cp --recursive {source_zarr} {dest_zarr_path}"
-            ):
-                logger.info(out)
-
-        else:
-            raise ValueError(f"Folder {source_zarr} does not exist!")
-
-        if source_metadata.exists():
-            for out in utils.execute_command_helper(
-                f"aws s3 cp --recursive {source_metadata} {dest_metadata_path}/{fuse_folder.name}"
-            ):
-                logger.info(out)
-
-        else:
-            raise ValueError(f"Folder {source_metadata} does not exist!")
-
-    # Copying stitch metadata
-    for stitch_folder in stitch_folders:
-        logger.info(f"Copying data from {stitch_folder} to {dest_metadata_path}")
-        stitch_folder = Path(stitch_folder)
-        source_metadata = stitch_folder.joinpath("metadata")
-
-        if source_metadata.exists():
-            for out in utils.execute_command_helper(
-                f"aws s3 cp --recursive {source_metadata} {dest_metadata_path}/{stitch_folder.name}"
-            ):
-                logger.info(out)
-
-        else:
-            raise ValueError(f"Folder {source_metadata} does not exist!")
-
-    # Copying ccf data
-    ccf_s3_output = f"{s3_path}/image_atlas_alignment"
-    regex_channels = r"Ex_(\d{3})_Em_(\d{3})$"
-
-    for ccf_folder in ccf_folders:
-        channel_name = re.search(regex_channels, ccf_folder).group()
-
-        for out in utils.execute_command_helper(
-            f"aws s3 mv --recursive {ccf_folder} {ccf_s3_output}/{channel_name}"
-        ):
-            logger.info(out)
-
-    utils.save_string_to_txt(
-        f"Stitched dataset saved in: {s3_path}",
-        f"{results_folder}/output_stitching.txt",
-    )
+    
+    else:
+        # Organize files locally
+        pass
 
     return s3_path, dest_zarr_path
 
@@ -764,16 +783,36 @@ def run():
     - "clean": This mode cleans up all the results from the
     downstream capsules because our data is being copied to the
     aind-open-data bucket.
+
+    There are two more parameters useful to process data.
+    
+    - cloud_mode: Provide 'true' if you want to output data
+    in the cloud, 'false' otherwise. If 'true', we only support
+    AWS buckets and only the bucket and suffix must be provided.
+
+    - output_path: Path where you want to output the processed
+    dataset. If cloud_mode is 'true' then the data will be moved
+    to a provided AWS bucket, 'false' means you will store the
+    dataset locally. Be aware we are currently using cp command.
     """
 
     # Absolute paths of common Code Ocean folders
     data_folder = Path(os.path.abspath("../data"))
     results_folder = Path(os.path.abspath("../results"))
 
-    mode = str(sys.argv[1:])
-    mode = mode.replace("[", "").replace("]", "").casefold()
-    sys.argv = [sys.argv[0]]
+    params = str(sys.argv[1:])
+    params = params.replace("[", "").replace("]", "").casefold()
 
+    try:
+        mode, cloud_mode, output_path = params.split(',')
+    
+    except ValueError as e:
+        print(f"Three parameters are required as input!, error {e}")
+        exit(1)
+
+    cloud_mode = bool(cloud_mode)
+    sys.argv = [sys.argv[0]]
+    
     # Loading .env file
     # dotenv_path = Path(os.path.dirname(os.path.realpath(__file__))) / ".env"
     # load_env_file = load_dotenv(dotenv_path=dotenv_path)
@@ -819,8 +858,6 @@ def run():
         fuse_folders = glob(f"{data_folder}/fused/fusion_*")
         ccf_folders = glob(f"{data_folder}/ccf_registration_results/ccf_*")
 
-        bucket_path = "your-bucket-path"
-
         s3_path, s3_dest_zarr = copy_intermediate_data(
             output_dispatch_metadata=output_dispatch_metadata,
             destripe_files=destripe_files,
@@ -829,9 +866,10 @@ def run():
             fuse_folders=fuse_folders,
             ccf_folders=ccf_folders,
             new_dataset_name=new_dataset_name,
-            bucket_path=bucket_path,
+            output_path=output_path,
             results_folder=results_folder,
             logger=logger,
+            cloud_mode=cloud_mode,
         )
 
         # Getting S3 paths for channels
@@ -846,7 +884,7 @@ def run():
         ]
         output_json, ng_link_path = create_ng_link(
             config={
-                "bucket_path": bucket_path,
+                "bucket_path": output_path,
                 "output_folder": results_folder,
                 "ng_base_url": "https://aind-neuroglancer-sauujisjxq-uw.a.run.app",
                 "z_res": axes_resolution[2]["resolution"],
@@ -860,11 +898,16 @@ def run():
         data_results = glob(f"{results_folder}/*")
         logger.info(f"Data in {results_folder}: {data_results}")
 
-        # Copying neuroglancer config out
-        for out in utils.execute_command_helper(
-            f"aws s3 cp {output_json} {s3_path}/{output_json.name}"
-        ):
-            logger.info(out)
+        if cloud_mode:
+            # Copying neuroglancer config out
+            for out in utils.execute_command_helper(
+                f"aws s3 cp {output_json} {s3_path}/{output_json.name}"
+            ):
+                logger.info(out)
+        
+        else:
+            # TODO: copy the neuroglancer config file
+            pass
 
         # Setting the stitching path in pipeline config
         pipeline_config["pipeline_processing"]["stitching"]["s3_path"] = s3_path
@@ -893,6 +936,7 @@ def run():
             processing_manifest=pipeline_config,
             data_folder=data_folder,
             results_folder=results_folder,
+            cloud_mode=cloud_mode,
         )
 
     else:
