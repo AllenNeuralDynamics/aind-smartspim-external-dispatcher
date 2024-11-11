@@ -310,7 +310,35 @@ def clean_up(
     
     else:
         # Move the data locally
-        pass
+        s3_path = processing_manifest["pipeline_processing"]["stitching"]["s3_path"]
+        cell_s3_output = f"{s3_path}/image_cell_segmentation"
+        quantification_s3_output = f"{s3_path}/image_cell_quantification"
+
+        regex_channels = r"Ex_(\d{3})_Em_(\d{3})$"
+
+        # Copying final processing manifest
+        for out in utils.execute_command_helper(
+            f"mv {results_folder}/processing.json {s3_path}/processing.json"
+        ):
+            print(out)
+
+        # Moving data to the cell folder
+        for cell_folder in cell_folders:
+            channel_name = re.search(regex_channels, cell_folder).group()
+
+            for out in utils.execute_command_helper(
+                f"mv {cell_folder} {cell_s3_output}/{channel_name}"
+            ):
+                print(out)
+
+        # Moving data to the quantification folder
+        for quantification_folder in quantification_folders:
+            channel_name = re.search(regex_channels, quantification_folder).group()
+
+            for out in utils.execute_command_helper(
+                f"mv {quantification_folder} {quantification_s3_output}/{channel_name}"
+            ):
+                print(out)
 
     utils.save_string_to_txt(
         f"Results of cell segmentation saved in: {cell_s3_output}",
@@ -591,7 +619,87 @@ def copy_intermediate_data(
     
     else:
         # Organize files locally
-        pass
+        s3_path = f"{output_path}/{new_dataset_name}"
+        utils.create_folder(dest_dir=s3_path, verbose=True)
+
+        # Copying derived metadata
+        output_dispatch_metadata = Path(output_dispatch_metadata)
+        for out in utils.execute_command_helper(
+            f"cp -r {output_dispatch_metadata} {s3_path}"
+        ):
+            logger.info(out)
+
+        # Copying out fused data
+        output_fusion = "image_tile_fusing"
+        dest_zarr_path = f"{s3_path}/{output_fusion}/OMEZarr"
+        dest_metadata_path = f"{s3_path}/{output_fusion}/metadata"
+
+        for flatfield_channel in flatfield_channels:
+            flatfield_channel_name = Path(flatfield_channel).name
+            logger.info(
+                f"Copying data from {flatfield_channel} to"
+                f"{dest_metadata_path}/flatfield_correction/{flatfield_channel_name}"
+            )
+            for out in utils.execute_command_helper(
+                f"cp -r {flatfield_channel} {dest_metadata_path}/flatfield_correction/{flatfield_channel_name}"
+            ):
+                logger.info(out)
+
+        for fuse_folder in fuse_folders:
+            logger.info(f"Copying data from {fuse_folder} to {s3_path}/{output_fusion}")
+            fuse_folder = Path(fuse_folder)
+            source_zarr = fuse_folder.joinpath("OMEZarr")
+            source_metadata = fuse_folder.joinpath("metadata")
+
+            if source_zarr.exists():
+                for out in utils.execute_command_helper(
+                    f"cp -r {source_zarr} {dest_zarr_path}"
+                ):
+                    logger.info(out)
+
+            else:
+                raise ValueError(f"Folder {source_zarr} does not exist!")
+
+            if source_metadata.exists():
+                for out in utils.execute_command_helper(
+                    f"cp -r {source_metadata} {dest_metadata_path}/{fuse_folder.name}"
+                ):
+                    logger.info(out)
+
+            else:
+                raise ValueError(f"Folder {source_metadata} does not exist!")
+
+        # Copying stitch metadata
+        for stitch_folder in stitch_folders:
+            logger.info(f"Copying data from {stitch_folder} to {dest_metadata_path}")
+            stitch_folder = Path(stitch_folder)
+            source_metadata = stitch_folder.joinpath("metadata")
+
+            if source_metadata.exists():
+                for out in utils.execute_command_helper(
+                    f"cp -r {source_metadata} {dest_metadata_path}/{stitch_folder.name}"
+                ):
+                    logger.info(out)
+
+            else:
+                raise ValueError(f"Folder {source_metadata} does not exist!")
+
+        # Copying ccf data
+        ccf_s3_output = f"{s3_path}/image_atlas_alignment"
+        regex_channels = r"Ex_(\d{3})_Em_(\d{3})$"
+
+        for ccf_folder in ccf_folders:
+            channel_name = re.search(regex_channels, ccf_folder).group()
+
+            for out in utils.execute_command_helper(
+                f"cp -r {ccf_folder} {ccf_s3_output}/{channel_name}"
+            ):
+                logger.info(out)
+
+        utils.save_string_to_txt(
+            f"Stitched dataset saved in: {s3_path}",
+            f"{results_folder}/output_stitching.txt",
+        )
 
     return s3_path, dest_zarr_path
 
@@ -898,16 +1006,18 @@ def run():
         data_results = glob(f"{results_folder}/*")
         logger.info(f"Data in {results_folder}: {data_results}")
 
+        # Copying neuroglancer config out
         if cloud_mode:
-            # Copying neuroglancer config out
             for out in utils.execute_command_helper(
                 f"aws s3 cp {output_json} {s3_path}/{output_json.name}"
             ):
                 logger.info(out)
         
         else:
-            # TODO: copy the neuroglancer config file
-            pass
+            for out in utils.execute_command_helper(
+                f"cp {output_json} {s3_path}/{output_json.name}"
+            ):
+                logger.info(out)
 
         # Setting the stitching path in pipeline config
         pipeline_config["pipeline_processing"]["stitching"]["s3_path"] = s3_path
