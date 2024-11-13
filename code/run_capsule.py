@@ -9,7 +9,6 @@ from glob import glob
 from pathlib import Path
 from typing import List, Tuple, Union
 
-import yaml
 from ng_link import NgState
 
 from utils import utils
@@ -118,25 +117,6 @@ def wavelength_to_hex_alternate(wavelength: int) -> int:
         if wavelength <= ub:  # Inclusive
             return hex_val
     return hex_val  # hex_val is set to the last color in for loop
-
-
-def get_yaml_config(filename):
-    """
-    Get default configuration from a YAML file.
-    Parameters
-    ------------------------
-    filename: str
-        String where the YAML file is located.
-    Returns
-    ------------------------
-    Dict
-        Dictionary with the configuration
-    """
-
-    with open(filename, "r") as stream:
-        config = yaml.safe_load(stream)
-
-    return config
 
 def dispatch(processing_manifest: dict, results_folder: PathLike):
     """
