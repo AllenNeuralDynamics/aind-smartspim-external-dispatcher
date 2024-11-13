@@ -74,6 +74,33 @@ def wavelength_to_hex(wavelength: int) -> int:
             return hex_val
     return hex_val  # hex_val is set to the last color in for loop
 
+def str_to_bool(s:str):
+    """
+    Parsing string to boolean
+
+    Parameters
+    ----------
+    s: str
+        String to parse. Admitted values true or false.
+
+    Raises
+    ------
+    ValueError
+        If the string is not true or false.
+
+    Returns
+    -------
+    bool
+        Parsed string to boolean
+
+    """
+    s = s.lower()
+    if s == "true":
+        return True
+    elif s == "false":
+        return False
+    else:
+        raise ValueError("Input should be 'true' or 'false'")
 
 def wavelength_to_hex_alternate(wavelength: int) -> int:
     """
@@ -898,7 +925,7 @@ def run():
         print(f"Three parameters are required as input!, error {e}")
         exit(1)
 
-    cloud_mode = bool(cloud_mode)
+    cloud_mode = str_to_bool(cloud_mode)
     sys.argv = [sys.argv[0]]
     
     # Loading .env file
