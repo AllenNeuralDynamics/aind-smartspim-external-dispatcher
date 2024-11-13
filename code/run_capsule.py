@@ -943,6 +943,7 @@ def run():
         exit(1)
 
     cloud_mode = str_to_bool(cloud_mode)
+    output_path = output_path.strip().replace("'", '')
     sys.argv = [sys.argv[0]]
     
     # Loading .env file
