@@ -333,6 +333,8 @@ def clean_up(
         for cell_folder in cell_folders:
             channel_name = re.search(regex_channels, cell_folder).group()
             dest_folder = f"{cell_s3_output}/{channel_name}"
+            utils.create_folder(dest_folder, verbose=True)
+
             for out in utils.execute_command_helper(
                 f"mv {cell_folder} {dest_folder}"
             ):
@@ -342,6 +344,8 @@ def clean_up(
         for quantification_folder in quantification_folders:
             channel_name = re.search(regex_channels, quantification_folder).group()
             dest_folder = f"{quantification_s3_output}/{channel_name}"
+            utils.create_folder(dest_folder, verbose=True)
+
             for out in utils.execute_command_helper(
                 f"mv {quantification_folder} {dest_folder}"
             ):
@@ -640,19 +644,20 @@ def copy_intermediate_data(
         output_fusion = "image_tile_fusing"
         dest_zarr_path = f"{s3_path}/{output_fusion}/OMEZarr"
         dest_metadata_path = f"{s3_path}/{output_fusion}/metadata"
-        utils.create_folder(dest_zarr_path)
-        utils.create_folder(dest_metadata_path)
+        utils.create_folder(dest_zarr_path, verbose=True)
+        utils.create_folder(dest_metadata_path, verbose=True)
 
         for flatfield_channel in flatfield_channels:
             flatfield_channel_name = Path(flatfield_channel).name
             dest_folder = f"{dest_metadata_path}/flatfield_correction/{flatfield_channel_name}"
+            utils.create_folder(dest_folder, verbose=True)
+
             logger.info(
                 f"Copying data from {flatfield_channel} to"
-                f"{dest_folder}"
+                f"{dest_folder}. Folder created!"
             )
-            utils.create_folder(dest_folder)
             for out in utils.execute_command_helper(
-                f"cp -r {flatfield_channel} {dest_metadata_path}/flatfield_correction/{flatfield_channel_name}"
+                f"cp -r {flatfield_channel} {dest_folder}"
             ):
                 logger.info(out)
 
@@ -673,6 +678,8 @@ def copy_intermediate_data(
 
             if source_metadata.exists():
                 dest_folder = f"{dest_metadata_path}/{fuse_folder.name}"
+                utils.create_folder(dest_folder, verbose=True)
+
                 for out in utils.execute_command_helper(
                     f"cp -r {source_metadata} {dest_folder}"
                 ):
@@ -689,6 +696,8 @@ def copy_intermediate_data(
 
             if source_metadata.exists():
                 dest_folder = f"{dest_metadata_path}/{stitch_folder.name}"
+                utils.create_folder(dest_folder, verbose=True)
+
                 for out in utils.execute_command_helper(
                     f"cp -r {source_metadata} {dest_folder}"
                 ):
@@ -704,6 +713,8 @@ def copy_intermediate_data(
         for ccf_folder in ccf_folders:
             channel_name = re.search(regex_channels, ccf_folder).group()
             dest_folder = f"{ccf_s3_output}/{channel_name}"
+            utils.create_folder(dest_folder, verbose=True)
+
             for out in utils.execute_command_helper(
                 f"cp -r {ccf_folder} {dest_folder}"
             ):
