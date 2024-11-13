@@ -94,13 +94,13 @@ def str_to_bool(s:str):
         Parsed string to boolean
 
     """
-    s = s.lower()
-    if s == "true":
+    s_cleaned = s.strip().lower().replace("'", '')
+    if s_cleaned == "true":
         return True
-    elif s == "false":
+    elif s_cleaned == "false":
         return False
     else:
-        raise ValueError("Input should be 'true' or 'false'")
+        raise ValueError(f"Input should be 'true' or 'false'. Provided: {s_cleaned}")
 
 def wavelength_to_hex_alternate(wavelength: int) -> int:
     """
