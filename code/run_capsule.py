@@ -513,7 +513,7 @@ def copy_intermediate_data(
         print(f"Error while compiling processing manifests: {e}")
         output_filename = None
 
-    logger.info(f"Compiled processing.json in path {output_filename}")
+    logger.info(f"Compiled processing.json in path {output_filename} - Copying to cloud?: {cloud_mode}")
 
     if cloud_mode:
         s3_path = f"s3://{output_path}/{new_dataset_name}"
@@ -927,6 +927,7 @@ def run():
         )
 
     logger.info(f"Data in data folder: {os.listdir(data_folder)}")
+    logger.info(f"Mode: {mode} - Cloud mode: {cloud_mode} - Output path: {output_path}")
 
     if "dispatch" in mode:
         pipeline_config, dataset_name, investigators = get_data_config(
