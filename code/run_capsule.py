@@ -336,7 +336,7 @@ def clean_up(
             utils.create_folder(dest_folder, verbose=True)
 
             for out in utils.execute_command_helper(
-                f"mv {cell_folder} {dest_folder}"
+                f"mv {cell_folder}/* {dest_folder}"
             ):
                 print(out)
 
@@ -347,7 +347,7 @@ def clean_up(
             utils.create_folder(dest_folder, verbose=True)
 
             for out in utils.execute_command_helper(
-                f"mv {quantification_folder} {dest_folder}"
+                f"mv {quantification_folder}/* {dest_folder}"
             ):
                 print(out)
 
@@ -636,13 +636,13 @@ def copy_intermediate_data(
         # Copying derived metadata
         output_dispatch_metadata = Path(output_dispatch_metadata)
         for out in utils.execute_command_helper(
-            f"cp -r {output_dispatch_metadata} {s3_path}"
+            f"cp {output_dispatch_metadata}/*.json {s3_path}"
         ):
             logger.info(out)
 
         # Copying out fused data
         output_fusion = "image_tile_fusing"
-        dest_zarr_path = f"{s3_path}/{output_fusion}/OMEZarr"
+        dest_zarr_path = f"{s3_path}/{output_fusion}"
         dest_metadata_path = f"{s3_path}/{output_fusion}/metadata"
         utils.create_folder(dest_zarr_path, verbose=True)
         utils.create_folder(dest_metadata_path, verbose=True)
@@ -657,7 +657,7 @@ def copy_intermediate_data(
                 f"{dest_folder}. Folder created!"
             )
             for out in utils.execute_command_helper(
-                f"cp -r {flatfield_channel} {dest_folder}"
+                f"cp {flatfield_channel}/* {dest_folder}"
             ):
                 logger.info(out)
 
@@ -681,7 +681,7 @@ def copy_intermediate_data(
                 utils.create_folder(dest_folder, verbose=True)
 
                 for out in utils.execute_command_helper(
-                    f"cp -r {source_metadata} {dest_folder}"
+                    f"cp {source_metadata}/* {dest_folder}"
                 ):
                     logger.info(out)
 
@@ -699,7 +699,7 @@ def copy_intermediate_data(
                 utils.create_folder(dest_folder, verbose=True)
 
                 for out in utils.execute_command_helper(
-                    f"cp -r {source_metadata} {dest_folder}"
+                    f"cp {source_metadata}/* {dest_folder}"
                 ):
                     logger.info(out)
 
@@ -716,7 +716,7 @@ def copy_intermediate_data(
             utils.create_folder(dest_folder, verbose=True)
 
             for out in utils.execute_command_helper(
-                f"cp -r {ccf_folder} {dest_folder}"
+                f"cp {ccf_folder}/* {dest_folder}"
             ):
                 logger.info(out)
 
