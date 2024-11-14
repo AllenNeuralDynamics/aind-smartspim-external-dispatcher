@@ -716,7 +716,7 @@ def copy_intermediate_data(
             utils.create_folder(dest_folder, verbose=True)
 
             for out in utils.execute_command_helper(
-                f"cp {ccf_folder}/* {dest_folder}/"
+                f"cp -r {ccf_folder}/* {dest_folder}/"
             ):
                 logger.info(out)
 
