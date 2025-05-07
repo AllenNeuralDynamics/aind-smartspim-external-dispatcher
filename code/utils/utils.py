@@ -369,6 +369,7 @@ def validate_capsule_inputs(input_elements: List[str]) -> List[str]:
 
     return missing_inputs
 
+
 def generate_data_description(
     raw_data_description_path,
     dest_data_description,
@@ -578,6 +579,7 @@ def compile_processing_jsons(
     )
 
     return output_filename
+
 
 def clean_investigator_names(investigators):
     """
