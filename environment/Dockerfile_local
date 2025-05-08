@@ -1,42 +1,39 @@
-FROM continuumio/miniconda3:23.9.0-0
-
-# --------------------- #
-#      METADATA         #
-# --------------------- #
-LABEL maintainer="Camilo Laiton <camilo.laiton@alleninstitute.org>" \
-    org.opencontainers.image.title="SmartSPIM pipeline dispatcher" \
-    org.opencontainers.image.description="Container for image dispatcher for smartspim pipeline." \
-    org.opencontainers.image.version="1.0.0" \
-    org.opencontainers.image.licenses="MIT"
+# -------- Stage 1: Build tools and env creation --------
+FROM continuumio/miniconda3:23.9.0-0 as builder
 
 ARG DEBIAN_FRONTEND=noninteractive
+ENV CONDA_ENV=dispatcher
+ENV PATH=/opt/conda/envs/$CONDA_ENV/bin:$PATH
 
-# Install curl to download AWS CLI binary
-RUN apt-get update && apt-get install -y curl unzip && rm -rf /var/lib/apt/lists/*
+# Install AWS CLI with required tools
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends curl unzip && \
+    curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "/tmp/awscliv2.zip" && \
+    unzip /tmp/awscliv2.zip -d /tmp && \
+    /tmp/aws/install && \
+    rm -rf /tmp/awscliv2.zip /tmp/aws && \
+    apt-get remove -y curl unzip && apt-get autoremove -y && \
+    rm -rf /var/lib/apt/lists/*
 
-# Download and install AWS CLI
-RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" \
-    && unzip awscliv2.zip \
-    && ./aws/install \
-    && rm -rf awscliv2.zip aws
+# Create env and install pip packages
+RUN conda create -n $CONDA_ENV python=3.8 --no-default-packages -y && \
+    /opt/conda/envs/$CONDA_ENV/bin/pip install -U --no-cache-dir \
+        aind-codeocean-api==0.4.2 \
+        python-dotenv==0.21.1 \
+        aind-data-schema==1.0.0 \
+        aind-ng-link==1.0.17 \
+        smartsheet-dataframe==0.3.4 && \
+    conda clean --all --yes
 
-# Clean up by removing unnecessary packages if desired
-RUN apt-get remove -y curl unzip && apt-get autoremove -y
+# -------- Stage 2: Minimal runtime --------
+FROM continuumio/miniconda3:23.9.0-0
 
-# Creating a new conda environment for argschema python bug
-RUN conda create -n dispatcher python=3.8 -y
+ENV CONDA_ENV=dispatcher
+ENV PATH=/opt/conda/envs/$CONDA_ENV/bin:$PATH
 
-# Make RUN commands use the new environment:
-SHELL ["conda", "run", "-n", "dispatcher", "/bin/bash", "-c"]
-RUN pip install -U --no-cache-dir \
-    dask[distributed]==2022.11.1 \
-    boto3==1.36.14 \
-    zarr==2.13.6 \
-    aind-codeocean-api==0.4.2 \
-    aind-data-schema==1.3.0 \
-    python-dotenv==0.21.1 \
-    smartsheet-dataframe==0.3.4 \
-    PyYAML==6.0.2 \
-    pyOpenSSL==24.2.1
+# Copy conda environment and AWS CLI from builder
+COPY --from=builder /opt/conda /opt/conda
+COPY --from=builder /usr/local/aws-cli /usr/local/aws-cli
+COPY --from=builder /usr/local/bin/aws /usr/local/bin/aws
 
-RUN conda config --add channels conda-forge && conda config --set channel_priority strict && conda install s5cmd
+CMD ["bash"]
