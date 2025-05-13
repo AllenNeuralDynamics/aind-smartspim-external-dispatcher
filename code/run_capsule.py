@@ -12,7 +12,7 @@ from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import requests
-from __init__ import __maintainers__, __pipeline_notes__, __pipeline_version__
+from . import __maintainers__, __pipeline_notes__, __pipeline_version__
 from utils import utils
 
 logging.basicConfig(
