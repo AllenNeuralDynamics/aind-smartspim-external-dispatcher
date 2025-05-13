@@ -404,7 +404,7 @@ def generate_data_description(
     if isinstance(data["institution"], dict) and "abbreviation" in data["institution"]:
         institution = data["institution"]["abbreviation"]
 
-    investigators = data["investigators"]
+    investigators = data.get("investigators", [])
 
     if len(investigators) and len(investigators[0]):
         investigators = [PIDName.parse_obj(inv) for inv in investigators]
@@ -412,17 +412,20 @@ def generate_data_description(
     else:
         investigators = [PIDName(name="Unknown")]
 
-    print("Funding sources: ", data["funding_source"])
-    print("Data group: ", data["group"])
-
     # from_data_description
     funding_adapter = TypeAdapter(Funding)
-    funding_sources = [
-        funding_adapter.validate_python(fund) for fund in data["funding_source"]
-    ]
+    try:
+        funding_sources = [
+            funding_adapter.validate_python(fund) for fund in data["funding_source"]
+        ]
+    except Exception as e:
+        print(f"Error getting the funding source into the schema!")
+        funding_sources = []
 
+    # Setting Allen Institute as default since derived data description
+    # does not allow empty funding source
     if not len(funding_sources):
-        funding_sources = [Funding(name="Unknown")]
+        funding_sources = [Funding(funder=Organization.AI)]
 
     # Ensuring backwards compatibility
     derived = DerivedDataDescription(
