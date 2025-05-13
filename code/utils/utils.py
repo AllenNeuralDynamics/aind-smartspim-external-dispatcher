@@ -420,6 +420,10 @@ def generate_data_description(
     funding_sources = [
         funding_adapter.validate_python(fund) for fund in data["funding_source"]
     ]
+
+    if not len(funding_sources):
+        funding_sources = [Funding(name="Unknown")]
+
     # Ensuring backwards compatibility
     derived = DerivedDataDescription(
         creation_time=datetime.now(),
