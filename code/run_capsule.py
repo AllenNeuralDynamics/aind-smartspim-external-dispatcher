@@ -1256,6 +1256,9 @@ def create_derived_stitched_metadata(
     output_dispatch_metadata = f"{results_folder}/output_aind_metadata"
     utils.create_folder(output_dispatch_metadata)
 
+    print(f"Contents raw metadata folder: {os.listdir(raw_metadata_path)}")
+    print(f"Contents data folder: {os.listdir(data_folder)}")
+
     new_dataset_name = utils.generate_data_description(
         raw_data_description_path=raw_metadata_path.joinpath("data_description.json"),
         dest_data_description=output_dispatch_metadata,
