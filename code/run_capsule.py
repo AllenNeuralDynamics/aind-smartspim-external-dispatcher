@@ -12,7 +12,6 @@ from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import requests
-from . import __maintainers__, __pipeline_notes__, __pipeline_version__
 from utils import utils
 
 logging.basicConfig(
@@ -829,9 +828,9 @@ def clean_up(
         output_filename = utils.compile_processing_jsons(
             processing_paths=processing_paths,
             output_general_processing=results_folder,
-            processor_full_name=__maintainers__[0],
-            pipeline_version=__pipeline_version__,
-            pipeline_notes=__pipeline_notes__,
+            processor_full_name="Camilo Laiton",
+            pipeline_version="3.0.1",
+            pipeline_notes="SLURM pipeline",
         )
         logger.info(f"Compiled processing.json in path {output_filename}")
 
@@ -1110,9 +1109,9 @@ def copy_intermediate_data(
         output_filename = utils.compile_processing_jsons(
             processing_paths=processing_paths,
             output_general_processing=output_dispatch_metadata,
-            processor_full_name=__maintainers__[0],
-            pipeline_version=__pipeline_version__,
-            pipeline_notes=__pipeline_notes__,
+            processor_full_name="Camilo Laiton",
+            pipeline_version="3.0.1",
+            pipeline_notes="SLURM pipeline",
         )
 
     except Exception as e:
