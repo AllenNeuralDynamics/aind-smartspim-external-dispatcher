@@ -412,6 +412,9 @@ def generate_data_description(
     else:
         investigators = [PIDName(name="Unknown")]
 
+    print("Funding sources: ", data["funding_source"])
+    print("Data group: ", data["group"])
+
     # from_data_description
     funding_adapter = TypeAdapter(Funding)
     funding_sources = [
