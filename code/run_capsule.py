@@ -1534,6 +1534,7 @@ def run():
         stitch_folder = data_folder.joinpath("stitched")
         fuse_folder = data_folder.joinpath("fused")
         ccf_folders = glob(f"{data_folder}/ccf_registration_results/ccf_*")
+        print(ccf_folders, Path(f"{data_folder}/ccf_registration_results").glob("*"))
 
         s3_path, dest_zarr_path = copy_intermediate_data(
             output_dispatch_metadata=output_dispatch_metadata,
