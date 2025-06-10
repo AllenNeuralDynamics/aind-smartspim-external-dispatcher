@@ -1,4 +1,4 @@
-""" Main script that works as a dispatcher in code ocean """
+"""Main script that works as a dispatcher in code ocean"""
 
 import json
 import logging
@@ -1030,7 +1030,7 @@ def copy_intermediate_data(
     destripe_files: List[PathLike],
     stitch_folder: List[PathLike],
     fuse_folder: List[PathLike],
-    ccf_folders: List[PathLike],
+    ccf_folder: PathLike,
     new_dataset_name: str,
     output_path: str,
     results_folder: PathLike,
@@ -1063,8 +1063,8 @@ def copy_intermediate_data(
         Fuse folders generated in the
         parallel fusion step.
 
-    ccf_folders: List[PathLike]
-        CCF registration folders generated
+    ccf_folder: PathLike
+        CCF registration folder generated
         in the pipeline.
 
     s3_path: str
@@ -1080,15 +1080,20 @@ def copy_intermediate_data(
     flatfield_processings = [str(flatfield_folder.joinpath("metadata/processing.json"))]
     stitch_processings = [str(stitch_folder.joinpath("metadata/processing.json"))]
     fuse_processings = [str(p) for p in list(fuse_folder.glob("*_processing.json"))]
+    ccf_folders = Path(ccf_folder).glob("*")
+
+    logger.info(f"CCF folders: {ccf_folders}")
+
     ccf_processings = []
 
     for ccf_folder in ccf_folders:
-        processing_jsons = [
-            p
-            for p in glob(f"{ccf_folder}/metadata/*processing*.json")
-            if "manifest" not in str(p)
-        ]
-        ccf_processings.append(processing_jsons)
+        if "ccf_" in ccf_folder:
+            processing_jsons = [
+                p
+                for p in glob(f"{ccf_folder}/metadata/*processing*.json")
+                if "manifest" not in str(p)
+            ]
+            ccf_processings.append(processing_jsons)
 
     # Flattening list
     processing_paths = list()
@@ -1196,10 +1201,11 @@ def copy_intermediate_data(
         ccf_output = local_path / "image_atlas_alignment"
         regex_channels = r"Ex_(\d{3})_Em_(\d{3})|ccf_reverse|ccf_annotation_precomputed"
 
-        for ccf_folder in ccf_folders:
+        for curr_ccf_folder in ccf_folders:
             ccf_folder_path = Path(ccf_folder)
-            match = re.search(regex_channels, ccf_folder)
+            match = re.search(regex_channels, curr_ccf_folder)
             if match:
+                logger.info(f"Current CCF folder: {ccf_folder_path}")
                 channel_name = match.group()
                 dest_ccf_path = ccf_output / channel_name
                 shutil.move(ccf_folder_path, dest_ccf_path)
@@ -1533,8 +1539,7 @@ def run():
         destripe_files = [str(p) for p in list(data_folder.glob("image_destriping_*"))]
         stitch_folder = data_folder.joinpath("stitched")
         fuse_folder = data_folder.joinpath("fused")
-        ccf_folders = glob(f"{data_folder}/ccf_registration_results/ccf_*")
-        print(ccf_folders, Path(f"{data_folder}/ccf_registration_results").glob("*"))
+        ccf_folder = f"{data_folder}/ccf_registration_results"
 
         s3_path, dest_zarr_path = copy_intermediate_data(
             output_dispatch_metadata=output_dispatch_metadata,
@@ -1542,7 +1547,7 @@ def run():
             destripe_files=destripe_files,
             stitch_folder=stitch_folder,
             fuse_folder=fuse_folder,
-            ccf_folders=ccf_folders,
+            ccf_folder=ccf_folder,
             new_dataset_name=new_dataset_name,
             output_path=output_path,
             results_folder=results_folder,
