@@ -1202,14 +1202,15 @@ def copy_intermediate_data(
         regex_channels = r"Ex_(\d{3})_Em_(\d{3})|ccf_reverse|ccf_annotation_precomputed"
 
         for curr_ccf_folder in ccf_folders:
-            ccf_folder_path = Path(ccf_folder)
+            logger.info(f"Current CCF folder path: {curr_ccf_folder}")
+            curr_ccf_folder = str(curr_ccf_folder)
             match = re.search(regex_channels, curr_ccf_folder)
             if match:
-                logger.info(f"Current CCF folder: {ccf_folder_path}")
+                logger.info(f"Current CCF folder: {curr_ccf_folder}")
                 channel_name = match.group()
                 dest_ccf_path = ccf_output / channel_name
-                shutil.move(ccf_folder_path, dest_ccf_path)
-                logger.info(f"Moved CCF folder {ccf_folder_path} to {dest_ccf_path}")
+                shutil.move(curr_ccf_folder, dest_ccf_path)
+                logger.info(f"Moved CCF folder {curr_ccf_folder} to {dest_ccf_path}")
             else:
                 logger.warning(f"No channel match found for {ccf_folder}")
 
