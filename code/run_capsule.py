@@ -1087,7 +1087,7 @@ def copy_intermediate_data(
     ccf_processings = []
 
     for ccf_folder in ccf_folders:
-        if "ccf_" in ccf_folder:
+        if "ccf_" in str(ccf_folder):
             processing_jsons = [
                 p
                 for p in glob(f"{ccf_folder}/metadata/*processing*.json")
