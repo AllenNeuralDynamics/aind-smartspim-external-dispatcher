@@ -22,8 +22,8 @@ RUN conda create -n $CONDA_ENV python=3.8 --no-default-packages -y && \
         python-dotenv==0.21.1 \
         aind-data-schema==1.4.0 \
         aind-ng-link==1.0.17 \
-        smartsheet-dataframe==0.3.4 && \
-        dask \
+        smartsheet-dataframe==0.3.4 \
+        dask && \
     conda clean --all --yes
 
 # -------- Stage 2: Minimal runtime --------
