@@ -1080,14 +1080,15 @@ def copy_intermediate_data(
     flatfield_processings = [str(flatfield_folder.joinpath("metadata/processing.json"))]
     stitch_processings = [str(stitch_folder.joinpath("metadata/processing.json"))]
     fuse_processings = [str(p) for p in list(fuse_folder.glob("*_processing.json"))]
-    ccf_folders = Path(ccf_folder).glob("*")
+    ccf_folders = list(Path(ccf_folder).glob("*"))
 
-    logger.info(f"CCF folders: {ccf_folders}")
+    logger.info(f"Folder: {ccf_folder} - CCF folders: {ccf_folders}")
 
     ccf_processings = []
 
     for ccf_folder in ccf_folders:
-        if "ccf_" in str(ccf_folder):
+        logger.info(f"Current CCF folder: {ccf_folder}")
+        if "ccf_" in Path(ccf_folder).stem:
             processing_jsons = [
                 p
                 for p in glob(f"{ccf_folder}/metadata/*processing*.json")
@@ -1206,7 +1207,7 @@ def copy_intermediate_data(
             curr_ccf_folder = str(curr_ccf_folder)
             match = re.search(regex_channels, curr_ccf_folder)
             if match:
-                logger.info(f"Current CCF folder: {curr_ccf_folder}")
+                logger.info(f"It matched!")
                 channel_name = match.group()
                 dest_ccf_path = ccf_output / channel_name
                 shutil.move(curr_ccf_folder, dest_ccf_path)
@@ -1359,7 +1360,7 @@ def create_neuroglancer_link(
 
     colors = []
     for channel_str in s3_channel_paths:
-        channel_str = str(Path(channel_str).stem).replace(".ome", "")
+        channel_str = Path(channel_str).stem.replace(".ome", "").replace(".zarr", "")
         channel: int = int(channel_str.split("_")[-1])
         hex_val: int = wavelength_to_hex_alternate(channel)
         hex_code = f"#{str(hex(hex_val))[2:]}"
