@@ -1087,14 +1087,12 @@ def copy_intermediate_data(
     ccf_processings = []
 
     for ccf_folder in ccf_folders:
-        logger.info(f"Current CCF folder: {ccf_folder}")
-        if "ccf_" in Path(ccf_folder).stem:
-            processing_jsons = [
-                p
-                for p in glob(f"{ccf_folder}/metadata/*processing*.json")
-                if "manifest" not in str(p)
-            ]
-            ccf_processings.append(processing_jsons)
+        processing_jsons = [
+            p
+            for p in glob(f"{ccf_folder}/metadata/*processing*.json")
+            if "manifest" not in str(p)
+        ]
+        ccf_processings.append(processing_jsons)
 
     # Flattening list
     processing_paths = list()
@@ -1122,6 +1120,7 @@ def copy_intermediate_data(
     logger.info(f"Compiled processing.json in path {output_filename}")
 
     if cloud_mode:
+        logger.info("Cloud mode in dispatcher!")
         s3_path = f"s3://{output_path}/{new_dataset_name}"
         output_dispatch_metadata = Path(output_dispatch_metadata)
 
@@ -1161,6 +1160,7 @@ def copy_intermediate_data(
             move_to_s3(ccf_folder, f"{ccf_s3_output}/{channel_name}")
 
     else:
+        logger.info("Local copy mode for dispatcher!")
         output_dispatch_metadata = Path(output_dispatch_metadata)
         local_path = Path(output_path) / new_dataset_name
         local_path.mkdir(parents=True, exist_ok=True)
@@ -1203,17 +1203,28 @@ def copy_intermediate_data(
         regex_channels = r"Ex_(\d{3})_Em_(\d{3})|ccf_reverse|ccf_annotation_precomputed"
 
         for curr_ccf_folder in ccf_folders:
+            curr_ccf_folder = Path(curr_ccf_folder)
             logger.info(f"Current CCF folder path: {curr_ccf_folder}")
-            curr_ccf_folder = str(curr_ccf_folder)
-            match = re.search(regex_channels, curr_ccf_folder)
+
+            if not curr_ccf_folder.exists():
+                logger.error(f"Path does not exist: {curr_ccf_folder}")
+                continue  # skip this one
+
+            match = re.search(regex_channels, str(curr_ccf_folder))
             if match:
-                logger.info(f"It matched!")
+                logger.info(f"Match found: {match.group()}")
                 channel_name = match.group()
                 dest_ccf_path = ccf_output / channel_name
-                shutil.move(curr_ccf_folder, dest_ccf_path)
-                logger.info(f"Moved CCF folder {curr_ccf_folder} to {dest_ccf_path}")
+
+                try:
+                    shutil.copytree(str(curr_ccf_folder), str(dest_ccf_path))
+                    logger.info(f"Moved CCF folder {curr_ccf_folder} to {dest_ccf_path}")
+                except FileNotFoundError as e:
+                    logger.error(f"Failed to move {curr_ccf_folder} -> {dest_ccf_path}: {e}")
+                except Exception as e:
+                    logger.exception(f"Unexpected error while moving {curr_ccf_folder}: {e}")
             else:
-                logger.warning(f"No channel match found for {ccf_folder}")
+                logger.warning(f"No channel match found for {curr_ccf_folder}")
 
         s3_path = str(local_path)
         dest_zarr_path = str(dest_zarr_path)
@@ -1554,6 +1565,7 @@ def run():
             output_path=output_path,
             results_folder=results_folder,
             logger=logger,
+            cloud_mode=cloud_mode
         )
 
         # Getting S3 paths for channels
