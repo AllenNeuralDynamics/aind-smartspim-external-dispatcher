@@ -1392,7 +1392,7 @@ def create_neuroglancer_link(
     # Creating layer per channel
     layers = []
     for idx in range(len(s3_channel_paths)):
-        channel_name = Path(s3_channel_paths[idx]).name
+        channel_name = Path(s3_channel_paths[idx]).name.replace('.zarr', '')
 
         layers.append(
             {
@@ -1583,9 +1583,10 @@ def run():
             # f"{s3_path}/{output_fusion}/OMEZarr"
             s3_paths_for_channels.append(f"{dest_zarr_path}/{channel_name}.zarr")
 
-        chanel_dynamic_ranges = utils.calculate_dynamic_range(
+        channel_dynamic_ranges = utils.calculate_dynamic_range(
             fuse_folder=fuse_folder, extension="*.zarr", percentile=99, level=3
         )
+        logger.info(f"Computed dynamic ranges: {channel_dynamic_ranges} - S3 paths: {s3_paths_for_channels}")
         orientation = pipeline_config["prelim_acquisition"]
 
         axes_resolution = pipeline_config["pipeline_processing"]["stitching"][
@@ -1604,7 +1605,7 @@ def run():
             s3_channel_paths=s3_paths_for_channels,
             s3_dataset_path=s3_path,
             orientation=orientation,
-            dynamic_ranges=chanel_dynamic_ranges,
+            dynamic_ranges=channel_dynamic_ranges,
             segmentation=False,
         )
 
@@ -1660,7 +1661,7 @@ def run():
             s3_channel_paths=s3_paths_for_channels,
             s3_dataset_path=s3_path,
             orientation=orientation,
-            dynamic_ranges=chanel_dynamic_ranges,
+            dynamic_ranges=channel_dynamic_ranges,
             segmentation=True,
         )
 
