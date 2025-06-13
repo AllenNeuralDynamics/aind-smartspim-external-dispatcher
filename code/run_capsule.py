@@ -1583,9 +1583,13 @@ def run():
             # f"{s3_path}/{output_fusion}/OMEZarr"
             s3_paths_for_channels.append(f"{dest_zarr_path}/{channel_name}.zarr")
 
+        logger.info(f"Data in fuse folder: {list(fuse_folder.glob("*"))}")
         channel_dynamic_ranges = utils.calculate_dynamic_range(
             fuse_folder=fuse_folder, extension="*.zarr", percentile=99, level=3
         )
+        if not len(channel_dynamic_ranges):
+            raise ValueError(f"No dynamic ranges were acquired from data. Check: {list(fuse_folder.glob("*"))}")
+        
         logger.info(f"Computed dynamic ranges: {channel_dynamic_ranges} - S3 paths: {s3_paths_for_channels}")
         orientation = pipeline_config["prelim_acquisition"]
 
