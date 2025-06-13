@@ -1589,7 +1589,7 @@ def run():
             fuse_folder=fuse_folder, extension="*.zarr", percentile=99, level=3
         )
         if not len(channel_dynamic_ranges):
-            raise ValueError(f"No dynamic ranges were acquired from data. Check: {list(fuse_folder.glob("*"))}")
+            raise ValueError("No dynamic ranges were acquired from data.")
         
         logger.info(f"Computed dynamic ranges: {channel_dynamic_ranges} - S3 paths: {s3_paths_for_channels}")
         orientation = pipeline_config["prelim_acquisition"]
