@@ -1576,14 +1576,15 @@ def run():
 
         # Getting S3 paths for channels
         s3_paths_for_channels = []
-        for fuse_folder in fuse_folder.glob("*.zarr"):
-            channel_name = f"{Path(fuse_folder).stem}".replace("fusion_", "").replace(
+        for curr_fuse_folder in fuse_folder.glob("*.zarr"):
+            logger.info(f"Folder {curr_fuse_folder} in {curr_fuse_folder}")
+            channel_name = f"{Path(curr_fuse_folder).stem}".replace("fusion_", "").replace(
                 ".ome", ""
             )
             # f"{s3_path}/{output_fusion}/OMEZarr"
             s3_paths_for_channels.append(f"{dest_zarr_path}/{channel_name}.zarr")
 
-        logger.info(f"Data in fuse folder: {list(fuse_folder.glob("*"))}")
+        logger.info(f"Data in fuse folder: {fuse_folder}")
         channel_dynamic_ranges = utils.calculate_dynamic_range(
             fuse_folder=fuse_folder, extension="*.zarr", percentile=99, level=3
         )
