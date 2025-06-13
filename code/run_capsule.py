@@ -1218,11 +1218,17 @@ def copy_intermediate_data(
 
                 try:
                     shutil.copytree(str(curr_ccf_folder), str(dest_ccf_path))
-                    logger.info(f"Moved CCF folder {curr_ccf_folder} to {dest_ccf_path}")
+                    logger.info(
+                        f"Moved CCF folder {curr_ccf_folder} to {dest_ccf_path}"
+                    )
                 except FileNotFoundError as e:
-                    logger.error(f"Failed to move {curr_ccf_folder} -> {dest_ccf_path}: {e}")
+                    logger.error(
+                        f"Failed to move {curr_ccf_folder} -> {dest_ccf_path}: {e}"
+                    )
                 except Exception as e:
-                    logger.exception(f"Unexpected error while moving {curr_ccf_folder}: {e}")
+                    logger.exception(
+                        f"Unexpected error while moving {curr_ccf_folder}: {e}"
+                    )
             else:
                 logger.warning(f"No channel match found for {curr_ccf_folder}")
 
@@ -1565,13 +1571,15 @@ def run():
             output_path=output_path,
             results_folder=results_folder,
             logger=logger,
-            cloud_mode=cloud_mode
+            cloud_mode=cloud_mode,
         )
 
         # Getting S3 paths for channels
         s3_paths_for_channels = []
         for fuse_folder in fuse_folder.glob("*.zarr"):
-            channel_name = f"{Path(fuse_folder).name}".replace("fusion_", "")
+            channel_name = f"{Path(fuse_folder).stem}".replace("fusion_", "").replace(
+                ".ome", ""
+            )
             # f"{s3_path}/{output_fusion}/OMEZarr"
             s3_paths_for_channels.append(f"{dest_zarr_path}/{channel_name}.zarr")
 
