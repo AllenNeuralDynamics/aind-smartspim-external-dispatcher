@@ -1392,7 +1392,7 @@ def create_neuroglancer_link(
     # Creating layer per channel
     layers = []
     for idx in range(len(s3_channel_paths)):
-        channel_name = Path(s3_channel_paths[idx]).name.replace('.zarr', '')
+        channel_name = Path(s3_channel_paths[idx]).name
 
         layers.append(
             {
