@@ -11,10 +11,14 @@ from pathlib import Path
 from typing import Any, List, Optional, Union
 
 import dask.array as da
+import pytz
 from aind_data_schema.core.data_description import (DerivedDataDescription,
                                                     Funding)
 from aind_data_schema.core.processing import (DataProcess, PipelineProcess,
                                               Processing)
+from aind_data_schema.core.quality_control import (QCEvaluation, QCMetric,
+                                                   QCStatus, QualityControl,
+                                                   Stage, Status)
 from aind_data_schema_models.modalities import Modality
 from aind_data_schema_models.organizations import Organization
 from aind_data_schema_models.pid_names import PIDName
@@ -669,3 +673,125 @@ def calculate_dynamic_range(
         dynamic_ranges[fused_zarr.name] = [int(range_max), window_max]
 
     return dynamic_ranges
+
+
+def generate_ng_link(
+    input_configs: dict,
+    s3_path: PathLike,
+    base_url=PathLike,
+    json_name=str,
+    segmentation=bool,
+):
+    """
+    Creates the json state dictionary for the neuroglancer link
+
+    Parameters
+    ----------
+    input_configs : dict
+        Base and layer information needed for configuring json state
+    s3_path : PathLike
+        The bucket location where the neuroglancer file will be stored
+    base_url : PathLike
+        The neuroglancer instance that you want to host the visualization
+    json_name : str
+        The name of the neuroglancer json file
+    segmentation: boolean
+        Whether you are creating the reversed segmentation layer link
+
+    Returns
+    -------
+    json_state : dict
+        fully configured JSON for neuroglancer visualization
+    """
+
+    if segmentation:
+        ng_path = f"{s3_path}/image_atlas_alignment/{json_name}"
+    else:
+        ng_path = f"{s3_path}/{json_name}"
+
+    json_state = {
+        "ng_link": f"{base_url}#!{ng_path}",
+        "title": input_configs["title"],
+        "dimensions": input_configs["dimensions"],
+        "crossSectionOrientation": input_configs["crossSectionOrientation"],
+        "crossSectionScale": input_configs["crossSectionScale"],
+        "projectionScale": 16384,
+        "layers": input_configs["layers"],
+        "gpuMemoryLimit": 1500000000,
+        "selectedLayer": {"visible": True, "layer": input_configs["layers"][0]["name"]},
+        "layout": "4panel",
+    }
+
+    return json_state
+
+
+def create_quality_control_metadata(
+    qc_eval_values: List[Dict], output_path: str, time_zone: str = "America/Los_Angeles"
+):
+    """
+    Creates a quality control metadata file to
+    track all metrics in each of the image processing
+    steps.
+
+    Parameters
+    ---------
+    qc_eval_values: List[Dict]
+        List of evaluations that will be included in
+        the quality control metadata.
+
+    output_path: PathLike
+        Path where the quality control metadata file
+        will be stored.
+
+    timezone: str
+        Timezone that will be used in the creation of
+        the metadata file.
+    """
+    qc_metrics = []
+
+    if len(qc_eval_values):
+        pst_timezone = pytz.timezone(time_zone)
+        curr_time = datetime.now(pst_timezone)
+        stage_lookup = {item.value: item for item in Stage}
+        status_lookup = {item.value: item for item in Status}
+
+        print("stage lookup: ", stage_lookup)
+        evaluations = []
+        for curr_qc_eval in qc_eval_values:
+            qc_metric_values = curr_qc_eval.get("qc_metric_values")
+
+            print(curr_qc_eval)
+            qc_metrics = [
+                QCMetric(
+                    name=curr_dict.get("name", ""),
+                    description=curr_dict.get("desc", ""),
+                    value=curr_dict.get("value", ""),
+                    reference=curr_dict.get("reference"),
+                    status_history=[
+                        QCStatus(
+                            evaluator="Automated",
+                            status=status_lookup.get(curr_dict.get("status")),
+                            timestamp=curr_time,
+                        )
+                    ],
+                )
+                for curr_dict in qc_metric_values
+            ]
+
+            evaluations.append(
+                QCEvaluation(
+                    name=curr_qc_eval.get("name"),
+                    description=curr_qc_eval.get("description"),
+                    modality=Modality.SPIM,
+                    stage=stage_lookup.get(curr_qc_eval.get("stage")),
+                    metrics=qc_metrics,
+                    notes=curr_qc_eval.get("notes", ""),
+                    created=curr_time,
+                )
+            )
+
+        if len(evaluations):
+            q = QualityControl(evaluations=evaluations)
+            serialized = q.model_dump_json()
+            deserialized = QualityControl.model_validate_json(serialized)
+            q.write_standard_file(output_directory=output_path)

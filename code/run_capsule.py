@@ -1578,9 +1578,9 @@ def run():
         s3_paths_for_channels = []
         for curr_fuse_folder in fuse_folder.glob("*.zarr"):
             logger.info(f"Folder {curr_fuse_folder} in {curr_fuse_folder}")
-            channel_name = f"{Path(curr_fuse_folder).stem}".replace("fusion_", "").replace(
-                ".ome", ""
-            )
+            channel_name = f"{Path(curr_fuse_folder).stem}".replace(
+                "fusion_", ""
+            ).replace(".ome", "")
             # f"{s3_path}/{output_fusion}/OMEZarr"
             s3_paths_for_channels.append(f"{dest_zarr_path}/{channel_name}.zarr")
 
@@ -1590,8 +1590,10 @@ def run():
         )
         if not len(channel_dynamic_ranges):
             raise ValueError("No dynamic ranges were acquired from data.")
-        
-        logger.info(f"Computed dynamic ranges: {channel_dynamic_ranges} - S3 paths: {s3_paths_for_channels}")
+
+        logger.info(
+            f"Computed dynamic ranges: {channel_dynamic_ranges} - S3 paths: {s3_paths_for_channels}"
+        )
         orientation = pipeline_config["prelim_acquisition"]
 
         axes_resolution = pipeline_config["pipeline_processing"]["stitching"][
