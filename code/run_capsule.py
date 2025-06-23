@@ -824,7 +824,7 @@ def clean_up(
 
     logger.info(f"Compiling processing paths: {processing_paths}")
 
-    if len(processing_paths) >= 1:
+    if len(processing_paths) > 1:
         output_filename = utils.compile_processing_jsons(
             processing_paths=processing_paths,
             output_general_processing=results_folder,
@@ -916,7 +916,11 @@ def clean_up(
             )
 
     else:
-        raise BaseException(f"Stopping clean up, no processing jsons found!")
+        print("No segmentation data to copy!")
+        utils.save_dict_as_json(
+            filename=f"{results_folder}/processing_manifest_no_cell_detection.json",
+            dictionary=processing_manifest,
+        )
 
 
 def get_data_config(
