@@ -824,7 +824,7 @@ def clean_up(
 
     logger.info(f"Compiling processing paths: {processing_paths}")
 
-    if len(processing_paths) > 1:
+    if len(processing_paths) >= 1:
         output_filename = utils.compile_processing_jsons(
             processing_paths=processing_paths,
             output_general_processing=results_folder,
@@ -903,15 +903,17 @@ def clean_up(
                 ):
                     print(out)
 
-        utils.save_string_to_txt(
-            f"Results of cell segmentation saved in: {cell_s3_output}",
-            f"{results_folder}/output_cell.txt",
-        )
+        if len(cell_folders):
+            utils.save_string_to_txt(
+                f"Results of cell segmentation saved in: {cell_s3_output}",
+                f"{results_folder}/output_cell.txt",
+            )
 
-        utils.save_string_to_txt(
-            f"Results of quantification saved in: {quantification_s3_output}",
-            f"{results_folder}/output_quantification.txt",
-        )
+        if len(quantification_folders):
+            utils.save_string_to_txt(
+                f"Results of quantification saved in: {quantification_s3_output}",
+                f"{results_folder}/output_quantification.txt",
+            )
 
     else:
         raise BaseException(f"Stopping clean up, no processing jsons found!")
