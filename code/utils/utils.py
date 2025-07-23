@@ -589,19 +589,28 @@ def compile_processing_jsons(
     """
     data_processes = []
     for processing_path in processing_paths:
-        curr_processing = read_json_as_dict(str(processing_path))
-        print(f"Reading processing: {curr_processing}")
-        processing_adapter = TypeAdapter(Processing)
-        curr_processing_obj = processing_adapter.validate_python(curr_processing)
+        if Path(processing_path).exists():
+            curr_processing = read_json_as_dict(str(processing_path))
+            print(f"Reading processing: {curr_processing}")
 
-        for data_process in curr_processing_obj.processing_pipeline.data_processes:
-            data_processes.append(data_process)
+            if len(curr_processing):
+                processing_adapter = TypeAdapter(Processing)
+                curr_processing_obj = processing_adapter.validate_python(curr_processing)
 
-        msg = (
-            f"Adding {len(curr_processing_obj.processing_pipeline.data_processes)} "
-            f"processes from {curr_processing}"
-        )
-        print(msg)
+                for data_process in curr_processing_obj.processing_pipeline.data_processes:
+                    data_processes.append(data_process)
+
+                msg = (
+                    f"Adding {len(curr_processing_obj.processing_pipeline.data_processes)} "
+                    f"processes from {curr_processing}"
+                )
+                print(msg)
+            
+            else:
+                print(f"Processing path {processing_path} does not have information!")
+        
+        else:
+            print(f"Processing {processing_path} does not exist!")
 
     output_filename = generate_processing(
         data_processes=data_processes,
